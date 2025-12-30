@@ -47,32 +47,38 @@ func CreateConfig() *Config {
 }
 
 // Inform if there are hosts in maintenance
-func Inform(config *Config) {
+func Inform(ctx context.Context, config *Config) {
 	t := time.NewTicker(time.Second * config.InformInterval)
 	defer t.Stop()
 
-	for ; true; <-t.C {
-		client := http.Client{
-			Timeout: time.Second * config.InformTimeout,
+	for {
+		select {
+		case <-t.C:
+			client := http.Client{
+				Timeout: time.Second * config.InformTimeout,
+			}
+
+			req, _ := http.NewRequest(http.MethodGet, config.InformUrl, nil)
+			res, doErr := client.Do(req)
+			if doErr != nil {
+				log.Printf("Inform: %v", doErr) // Don't fatal, just go further
+				continue
+			}
+
+			defer res.Body.Close()
+
+			decoder := json.NewDecoder(res.Body)
+			decodeErr := decoder.Decode(&hosts)
+			if decodeErr != nil {
+				log.Printf("Inform: %v", decodeErr) // Don't fatal, just go further
+				continue
+			}
+
+			log.Printf("Inform response: %v", hosts)
+		case <-ctx.Done():
+			log.Printf("Inform complete")
+			return
 		}
-
-		req, _ := http.NewRequest(http.MethodGet, config.InformUrl, nil)
-		res, doErr := client.Do(req)
-		if doErr != nil {
-			log.Printf("Inform: %v", doErr) // Don't fatal, just go further
-			continue
-		}
-
-		defer res.Body.Close()
-
-		decoder := json.NewDecoder(res.Body)
-		decodeErr := decoder.Decode(&hosts)
-		if decodeErr != nil {
-			log.Printf("Inform: %v", decodeErr) // Don't fatal, just go further
-			continue
-		}
-
-		log.Printf("Inform response: %v", hosts)
 	}
 }
 
@@ -137,8 +143,8 @@ func (rw *ResponseWriter) WriteHeader(statusCode int) {
 	rw.ResponseWriter.WriteHeader(http.StatusServiceUnavailable)
 }
 
-func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
-	go Inform(config)
+func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
+	go Inform(ctx, config)
 
 	return &Maintenance{
 		name:   name,

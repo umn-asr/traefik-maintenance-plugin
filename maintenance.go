@@ -139,6 +139,7 @@ func (rw *ResponseWriter) Write(bytes []byte) (int, error) {
 func (rw *ResponseWriter) WriteHeader(statusCode int) {
 	rw.ResponseWriter.Header().Del("Last-Modified")
 	rw.ResponseWriter.Header().Del("Content-Length")
+	rw.ResponseWriter.Header().Del("Content-Encoding")
 
 	rw.ResponseWriter.WriteHeader(http.StatusServiceUnavailable)
 }

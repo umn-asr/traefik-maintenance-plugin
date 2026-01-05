@@ -209,6 +209,8 @@ func getTemplate(mediaType string) []byte {
 		return []byte("This page is under maintenance. Please come back later.")
 
 	case "application/json":
+		fallthrough
+	case "application/vnd.api+json":
 		return []byte("{\"message\": \"This page is under maintenance. Please come back later.\"}")
 	}
 

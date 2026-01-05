@@ -161,6 +161,9 @@ func (a *Maintenance) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			ResponseWriter: rw,
 		}
 
+		req.Header.Del("If-None-Match")
+		req.Header.Del("If-Modified-Since")
+
 		a.next.ServeHTTP(wrappedWriter, req)
 
 		bytes := []byte{}
